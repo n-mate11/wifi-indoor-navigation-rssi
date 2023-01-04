@@ -2,25 +2,26 @@ package com.example.thesisandroidapp
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
+import com.opencsv.CSVWriter
+import java.io.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -28,9 +29,10 @@ class MainActivity : AppCompatActivity() {
     private val arrayList: ArrayList<String> = ArrayList()
     private var adapter: ArrayAdapter<*>? = null
     private var listView: ListView? = null
-    private val numMeasurements = 10
+
     private var x = 0
     private var y = 0
+    private var z = 0
 
     private val AP04333 = ""
     private val AP04096 = "5c:5a:c7:85:5c:2f"
@@ -39,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private val AP04099 = "5c:5a:c7:85:69:00" // not sure yet freq
     private val AP04100 = "5c:5a:c7:72:a9:0f" // not sure yet freq
 
+    val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "livingRoom.csv")
     var writer: FileWriter? = null
 
     @SuppressLint("SetTextI18n", "MissingInflatedId")
@@ -90,18 +93,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val wifiScanReceiver = object : BroadcastReceiver() {
+        @RequiresApi(Build.VERSION_CODES.Q)
         override fun onReceive(context: Context?, intent: Intent?) {
             val wifiMan = context!!.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val scanResults = wifiMan.scanResults
             var resultText: String
             Log.i("scan", scanResults.toString())
 
-            Log.d("File", "Writing to " + getStorageDir())
-            try {
-                writer = FileWriter(File(getStorageDir(),"scan.csv"), true
-                )
-            } catch (e: IOException) {
-                e.printStackTrace()
+            if (writer == null) {
+                writer = FileWriter(file, true)
+                Log.i("file", "File writer was null, initialized")
             }
 
             for (scanResult in scanResults) {
@@ -116,9 +117,14 @@ class MainActivity : AppCompatActivity() {
                     arrayList.add(resultText)
                     adapter!!.notifyDataSetChanged()
 
-                    val data = "${scanResult.level},$x,$y,0\n"
-                    writer?.write(data)
-
+                    try {
+                        val data = "${scanResult.level},$x,$y,$z\n"
+                        writer?.write(data)
+                        Log.i("file", "Wrote to file.")
+                        Log.i("file", writer.toString())
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
@@ -200,6 +206,7 @@ class MainActivity : AppCompatActivity() {
         // Make sure we unregister our receiver to avoid memory leaks.
         try {
             applicationContext.unregisterReceiver(wifiScanReceiver)
+            writer?.flush()
             writer?.close()
         } catch (e: Exception) {
             Log.i("scan","Wi-Fi scan results receiver already unregistered")
