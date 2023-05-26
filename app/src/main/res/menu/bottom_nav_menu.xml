@@ -6,8 +6,8 @@
         android:icon="@drawable/scan_foreground"
         />
     <item
-        android:id="@+id/navigation"
-        android:title="@string/navigation"
-        android:icon="@drawable/navigation_foreground"
+        android:id="@+id/moveScan"
+        android:title="@string/movescan"
+        android:icon="@drawable/movescan_foreground"
         />
 </menu>

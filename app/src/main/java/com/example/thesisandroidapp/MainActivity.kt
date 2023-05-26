@@ -19,15 +19,15 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
 
-        val navigationFragment = NavigationFragment()
+        val moveScanFragment = MoveScanFragment()
         val scanFragment = ScanFragment()
 
         setCurrentFragment(scanFragment)
 
-        bottomNavigationView.setOnNavigationItemSelectedListener {
+        bottomNavigationView.setOnItemSelectedListener {
             when(it.itemId) {
                 R.id.scan -> setCurrentFragment(scanFragment)
-                R.id.navigation -> setCurrentFragment(navigationFragment)
+                R.id.moveScan -> setCurrentFragment(moveScanFragment)
             }
             true
         }
