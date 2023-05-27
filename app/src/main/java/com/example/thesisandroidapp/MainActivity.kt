@@ -4,8 +4,21 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
+
+    fun getJsonDataFromRaw(): String? {
+        val jsonString: String
+        try {
+            jsonString = resources.openRawResource(R.raw.mac_addresses).bufferedReader()
+                .use { it.readText() }
+        } catch (ioException: IOException) {
+            ioException.printStackTrace()
+            return null
+        }
+        return jsonString
+    }
 
     private fun setCurrentFragment(fragment: Fragment) =
         supportFragmentManager.beginTransaction().apply {

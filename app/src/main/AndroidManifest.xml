@@ -24,7 +24,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ThesisAndroidApp"
         tools:targetApi="31"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
 
     <activity
             android:name=".MainActivity"

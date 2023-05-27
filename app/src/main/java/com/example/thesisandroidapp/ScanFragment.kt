@@ -52,15 +52,19 @@ class ScanFragment : Fragment() {
     private var counter = 0
 
     private val fileName = "floor5v8.csv"
-    private val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName)
+    private val file = File(
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+        fileName
+    )
     private var writer: FileWriter? = null
 
     private var addresses: List<MAC> = listOf()
 
-    private fun getJsonDataFromRaw(): String? {
+    fun getJsonDataFromRaw(): String? {
         val jsonString: String
         try {
-            jsonString = resources.openRawResource(R.raw.mac_addresses).bufferedReader().use { it.readText() }
+            jsonString = resources.openRawResource(R.raw.mac_addresses).bufferedReader()
+                .use { it.readText() }
         } catch (ioException: IOException) {
             ioException.printStackTrace()
             return null
@@ -118,11 +122,12 @@ class ScanFragment : Fragment() {
         @RequiresApi(Build.VERSION_CODES.Q)
         override fun onReceive(context: Context?, intent: Intent?) {
             arrayList.clear()
-            val wifiMan = context!!.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiMan =
+                context!!.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val scanResults = wifiMan.scanResults
             Log.i("scan", scanResults.toString())
 
-            val aps = scanResults.filter {(it.SSID == "VU-Campusnet")} // && it.frequency < 5000
+            val aps = scanResults.filter { (it.SSID == "VU-Campusnet") } // && it.frequency < 5000
             Log.i("APs", aps.toString())
 
             // List APs on screen
@@ -148,11 +153,15 @@ class ScanFragment : Fragment() {
 
     private fun doStartScan() {
         arrayList.clear()
-        activity?.applicationContext?.registerReceiver(wifiScanReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
+        activity?.applicationContext?.registerReceiver(
+            wifiScanReceiver,
+            IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+        )
 
-        val wifiMan = activity?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiMan =
+            activity?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val success = wifiMan.startScan()
-        Log.i("scan","Waiting for scanning results")
+        Log.i("scan", "Waiting for scanning results")
         if (success) {
             Log.i("scan", "scan successful")
         } else {
@@ -161,22 +170,29 @@ class ScanFragment : Fragment() {
     }
 
     private fun onStartScan() {
-        val wifiMan = activity?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiMan =
+            activity?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as WifiManager
         if (!wifiMan.isScanAlwaysAvailable && !wifiMan.isWifiEnabled) {
             Log.i("wifi", "wifi is not enabled")
             wifiMan.isWifiEnabled = true
             return
         }
 
-        Log.i("wifi","Start network scanning")
+        Log.i("wifi", "Start network scanning")
 
         // Network scanning requires access to device location, but we first need to check
         // whether the user has given its permission to use it.
-        if (ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(
+                requireActivity(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
 
-            ActivityCompat.requestPermissions(requireActivity(),
+            ActivityCompat.requestPermissions(
+                requireActivity(),
                 arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
-                1)
+                1
+            )
         } else if (ActivityCompat.checkSelfPermission(
                 requireActivity(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -185,24 +201,29 @@ class ScanFragment : Fragment() {
             ActivityCompat.requestPermissions(
                 requireActivity(),
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                1)
+                1
+            )
         } else {
             val coarseLocation = checkIfHasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
             val fineLocation = checkIfHasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
             val accessWifi = checkIfHasPermission(Manifest.permission.ACCESS_WIFI_STATE)
             val changeWifi = checkIfHasPermission(Manifest.permission.CHANGE_WIFI_STATE)
             val accessNetwork = checkIfHasPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-            Log.i("scan coarseLocation",  coarseLocation.toString())
-            Log.i("scan fineLocation",  fineLocation.toString())
-            Log.i("scan accessWifi",  accessWifi.toString())
-            Log.i("scan changeWifi",  changeWifi.toString())
-            Log.i("scan accessNetwork",  accessNetwork.toString())
+            Log.i("scan coarseLocation", coarseLocation.toString())
+            Log.i("scan fineLocation", fineLocation.toString())
+            Log.i("scan accessWifi", accessWifi.toString())
+            Log.i("scan changeWifi", changeWifi.toString())
+            Log.i("scan accessNetwork", accessNetwork.toString())
 
             doStartScan()
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(requireContext(), "Permission granted", Toast.LENGTH_LONG).show()
@@ -219,7 +240,7 @@ class ScanFragment : Fragment() {
             writer?.flush()
             writer?.close()
         } catch (e: Exception) {
-            Log.i("scan","Wi-Fi scan results receiver already unregistered")
+            Log.i("scan", "Wi-Fi scan results receiver already unregistered")
         }
     }
 
@@ -288,7 +309,7 @@ class ScanFragment : Fragment() {
             if (counter > 14) {
                 counter = 1
             } else {
-              counter++
+                counter++
             }
             counterTextView.text = counter.toString()
             onStartScan()

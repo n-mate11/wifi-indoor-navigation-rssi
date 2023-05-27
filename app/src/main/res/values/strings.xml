@@ -7,4 +7,5 @@
     <string name="movescan">Move Scan</string>
     <string name="scan">Scan</string>
     <string name="scan_wifi">Scan wifi</string>
+    <string name="stop_scan">stop scan</string>
 </resources>
