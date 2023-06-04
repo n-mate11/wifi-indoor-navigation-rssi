@@ -3,7 +3,6 @@ package com.example.thesisandroidapp
 import android.annotation.SuppressLint
 import android.content.*
 import android.graphics.*
-import android.net.Uri
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -17,15 +16,10 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileNotFoundException
 import java.util.Date
 
 
@@ -184,6 +178,7 @@ class MoveScanFragment : Fragment() {
     }
 
     private val wifiScanReceiver = object : BroadcastReceiver() {
+        @SuppressLint("SetTextI18n")
         override fun onReceive(context: Context, intent: Intent) {
             val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
             if (success) {
