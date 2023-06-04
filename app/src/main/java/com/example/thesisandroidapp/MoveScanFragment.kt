@@ -1,7 +1,9 @@
 package com.example.thesisandroidapp
 
+import android.annotation.SuppressLint
 import android.content.*
 import android.graphics.*
+import android.net.Uri
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -13,11 +15,17 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.util.Date
 
 
@@ -42,9 +50,7 @@ class MoveScanFragment : Fragment() {
 
     private var addresses: List<MAC> = listOf()
 
-    private val wifiManager: WifiManager by lazy {
-        requireActivity().applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    }
+    private lateinit var wifiManager: WifiManager
 
     private var startScanButton: FloatingActionButton? = null
     private var stopScanButton: FloatingActionButton? = null
@@ -55,8 +61,9 @@ class MoveScanFragment : Fragment() {
     private var scanCounterTextView: TextView? = null
 
     private var scanResultList = mutableListOf<List<ScanResult>>()
+    private var scanTimeList = mutableListOf<Long>()
 
-    private val fileName = "scan1.csv"
+    private val fileName = "scan.csv"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +73,7 @@ class MoveScanFragment : Fragment() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -76,6 +84,11 @@ class MoveScanFragment : Fragment() {
         val gson = Gson()
         val listMACType = object : TypeToken<List<MAC>>() {}.type
         addresses = gson.fromJson(macAddresses, listMACType)
+
+        wifiManager =
+            context?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        checkAndRequestPermissions()
 
         startScanButton = view.findViewById(R.id.startScanButton)
         stopScanButton = view.findViewById(R.id.stopScanButton)
@@ -96,7 +109,16 @@ class MoveScanFragment : Fragment() {
             startScanButton?.isClickable = false
             stopScanButton?.isEnabled = true
             stopScanButton?.isClickable = true
-            scanWifiSignals()
+
+            context?.registerReceiver(
+                wifiScanReceiver,
+                IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+            )
+            val success = wifiManager.startScan()
+            if (!success) {
+                // scan failure handling
+                Toast.makeText(context, "First Scan failed", Toast.LENGTH_SHORT).show()
+            }
         }
 
         stopScanButton?.setOnClickListener {
@@ -108,80 +130,28 @@ class MoveScanFragment : Fragment() {
             startScanButton?.isClickable = true
             stopScanButton?.isEnabled = false
             stopScanButton?.isClickable = false
+
             writeToCsvFile()
+
+            scanCounter = 0
+            scanCounterTextView?.text = "Scan counter: $scanCounter"
+
+            scanResultList.clear()
+            scanTimeList.clear()
+
+            startTimeStamp = 0
+            endTimeStamp = 0
+
+            startTimeTextView?.text = "Start time: "
+            endTimeTextView?.text = "End time: "
+
+            Toast.makeText(context, "Scan finished", Toast.LENGTH_SHORT).show()
         }
 
         return view
     }
 
-    private val wifiScanReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
-            if (success) {
-                val wifiList = wifiManager.scanResults
-                scanResultList.add(wifiList)
-                scanCounter++
-                scanCounterTextView?.text = "Scan counter: $scanCounter"
-
-                for (scanResult in wifiList) {
-                    Log.d(
-                        "WifiScan",
-                        "SSID: ${scanResult.SSID}, BSSID: ${scanResult.BSSID}, RSSI: ${scanResult.level}, Frequency: ${scanResult.frequency}, Timestamp: ${scanResult.timestamp}"
-                    )
-                }
-
-                wifiManager.startScan()
-            } else {
-                Log.e("WifiScan", "Error scanning wifi")
-            }
-
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun writeToCsvFile() {
-        val content = StringBuilder()
-        for (address in addresses) {
-            content.append("${address.name},${address.name}_timestamp,")
-        }
-        content.append("startTimestamp, stopTimestamp\n")
-        val row = StringBuilder()
-        for (scanResult in scanResultList) {
-            for (address in addresses) {
-                val scanResultForAddress =
-                    scanResult.find { scan -> scan.BSSID == address.mac }
-                if (scanResultForAddress != null) {
-                    row.append("${scanResultForAddress.level},${scanResultForAddress.timestamp},")
-                } else {
-                    row.append("0,0,")
-                }
-            }
-            row.append("${startTimeStamp},${endTimeStamp}\n")
-            content.append(row.toString())
-        }
-
-        Log.d("content", content.toString())
-
-        val resolver = context?.contentResolver
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/csv")
-        }
-
-        val uri = resolver?.insert(
-            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
-            contentValues
-        )
-        uri?.let {
-            resolver.openOutputStream(it, "wa")?.use { outputStream ->
-                outputStream.write(content.toString().toByteArray())
-                outputStream.flush()
-            }
-        }
-    }
-
-    private fun scanWifiSignals() {
+    private fun checkAndRequestPermissions() {
         if (!wifiManager.isWifiEnabled) {
             wifiManager.isWifiEnabled = true
         }
@@ -211,16 +181,72 @@ class MoveScanFragment : Fragment() {
             val intent = Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
             startActivity(intent)
         }
+    }
 
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
-        context?.registerReceiver(wifiScanReceiver, intentFilter)
+    private val wifiScanReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
+            if (success) {
+                Log.d("ScanResult", "Scan updated successfully")
+                val results = wifiManager.scanResults
+                scanResultList.add(results)
+                scanTimeList.add(System.currentTimeMillis())
+                scanCounter++
+                scanCounterTextView?.text = "Scan counter: $scanCounter"
+            }
+            wifiManager.startScan()
+        }
+    }
 
-        val scan = wifiManager.startScan()
-        if (scan) {
-            Log.d("WifiScan", "Scanning wifi")
-        } else {
-            Log.e("WifiScan", "Error scanning wifi")
+
+    override fun onDestroy() {
+        super.onDestroy()
+        context?.unregisterReceiver(wifiScanReceiver)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun writeToCsvFile() {
+        val content = StringBuilder()
+        val header = StringBuilder()
+        for (address in addresses) {
+            header.append("${address.name},${address.name}_timestamp,")
+        }
+        header.append("startTimestamp,stopTimestamp\n")
+
+        val rows = StringBuilder()
+        scanResultList.forEachIndexed { index, scanResults ->
+            for (address in addresses) {
+                val scan = scanResults.find { scan -> scan.BSSID == address.mac }
+                if (scan != null) {
+                    rows.append("${scan.level},${scan.timestamp},")
+                } else {
+                    rows.append("0,0,")
+                }
+            }
+            rows.append("$startTimeStamp,$endTimeStamp,${scanTimeList[index]}\n")
+        }
+
+        val resolver = context?.contentResolver
+
+        content.append(header)
+        content.append(rows)
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/csv")
+        }
+
+        val uri = resolver?.insert(
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            contentValues
+        )
+
+        uri?.let {
+            resolver.openOutputStream(it, "wa")?.use { outputStream ->
+                outputStream.write(content.toString().toByteArray())
+                outputStream.flush()
+            }
         }
     }
 
