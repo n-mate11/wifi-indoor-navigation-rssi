@@ -57,7 +57,8 @@ class MoveScanFragment : Fragment() {
     private var scanResultList = mutableListOf<List<ScanResult>>()
     private var scanTimeList = mutableListOf<Long>()
 
-    private val fileName = "scan.csv"
+    private var fileCounter = 0
+    private var fileName = "scan$fileCounter.csv"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,6 +140,9 @@ class MoveScanFragment : Fragment() {
             startTimeTextView?.text = "Start time: "
             endTimeTextView?.text = "End time: "
 
+            fileCounter++
+            fileName = "scan$fileCounter.csv"
+
             Toast.makeText(context, "Scan finished", Toast.LENGTH_SHORT).show()
         }
 
@@ -206,7 +210,7 @@ class MoveScanFragment : Fragment() {
         for (address in addresses) {
             header.append("${address.name},${address.name}_timestamp,")
         }
-        header.append("startTimestamp,stopTimestamp\n")
+        header.append("startTimestamp,stopTimestamp,scanTime\n")
 
         val rows = StringBuilder()
         scanResultList.forEachIndexed { index, scanResults ->
